@@ -30,13 +30,24 @@
 # APPROACH 1 — WITH ans
 # ============================================================
 #
-# If left half is sorted:
-#   arr[low] is the minimum of that half.
-#   Save it and search right.
+# If the current search space is completely sorted:
+#   arr[low] is its minimum.
+#   Save it and stop.
 #
 # Otherwise:
-#   Minimum is in the left half, including mid.
-#   Save arr[mid] and search left.
+#
+# If left half is sorted:
+#   arr[low] is the minimum of that sorted half.
+#   Save arr[low].
+#   Search the right half.
+#
+# Otherwise:
+#   arr[low] > arr[mid]
+#   so the minimum lies between low and mid.
+# arr[mid] is the minimum of the sorted right half.
+# Save arr[mid] and search left.
+#   Save arr[mid].
+#   Search left of mid.
 #
 # ------------------------------------------------------------
 
@@ -51,20 +62,19 @@ def find_min_with_ans(arr):
 
         mid = low + (high - low) // 2
 
-        # Left half is sorted
-        if arr[low] <= arr[mid]:
-
+        # Entire search space is sorted.
+        if arr[low] <= arr[high]:
             ans = min(ans, arr[low])
+            break
 
-            # Minimum cannot be in this sorted half
-            # except for arr[low], which we already saved.
+        # Left half is sorted.
+        if arr[low] <= arr[mid]:
+            ans = min(ans, arr[low])
             low = mid + 1
 
+        # Right half is sorted.
         else:
-
-            # Rotation point / minimum is in left half.
             ans = min(ans, arr[mid])
-
             high = mid - 1
 
     return ans
@@ -119,18 +129,23 @@ def find_min(arr):
 # low = 0
 # high = n - 1
 # ans = INF
-#
+
 # while low <= high:
+
+#     if arr[low] <= arr[high]:
+#         ans = min(ans, arr[low])
+#         break
+
 #     mid = middle
-#
-#     if left half is sorted:
+
+#     if arr[low] <= arr[mid]:
 #         ans = min(ans, arr[low])
 #         low = mid + 1
-#
+
 #     else:
 #         ans = min(ans, arr[mid])
 #         high = mid - 1
-#
+
 # return ans
 #
 #
