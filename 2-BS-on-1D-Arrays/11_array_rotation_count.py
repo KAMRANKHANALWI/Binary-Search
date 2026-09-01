@@ -68,3 +68,6 @@ if __name__ == "__main__":
     print(rotation_count([3, 4, 5, 1, 2]))        # 3
     print(rotation_count([1, 2, 3, 4, 5]))        # 0
     print(rotation_count([2, 3, 4, 5, 1]))        # 4
+    
+
+# Try do it with array containing duplicate 
