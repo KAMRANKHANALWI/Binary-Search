@@ -76,14 +76,20 @@ if m * k > len(arr):
 Standard "find leftmost True" binary search:
 
 ```python
+ans = -1
 while low <= high:
     mid = (low + high) // 2
     if possible(arr, mid, m, k):
-        high = mid - 1   # mid works, look for something earlier
+        ans = mid         # mid works, record it
+        high = mid - 1    # but keep looking for something earlier
     else:
-        low = mid + 1    # mid doesn't work, need more time
-return low
+        low = mid + 1     # mid doesn't work, need more time
+return ans
 ```
+
+`ans` starts at `-1` and gets overwritten every time we find a working
+day, so by the end it holds the *earliest* working day we saw — no
+need to reason about what `low` equals when the loop exits.
 
 ## Dry run
 
@@ -96,7 +102,7 @@ mid=5 -> bloomed {1,3,2} -> 3 bouquets -> True  -> high=4
 mid=2 -> bloomed {1,2}   -> 2 bouquets -> False -> low=3
 mid=3 -> bloomed {1,3,2} -> 3 bouquets -> True  -> high=2
 
-loop ends (low=3 > high=2) -> answer = 3
+loop ends (low=3 > high=2) -> ans = 3
 ```
 
 ## Complexity

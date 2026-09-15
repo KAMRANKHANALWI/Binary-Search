@@ -30,15 +30,17 @@ def min_days(arr, m, k):
         return -1
 
     low, high = min(arr), max(arr)
+    ans = -1
 
     while low <= high:
         mid = (low + high) // 2
         if possible(arr, mid, m, k):
-            high = mid - 1
+            ans = mid       # mid works, record it
+            high = mid - 1  # but keep looking for something earlier
         else:
             low = mid + 1
 
-    return low
+    return ans
 
 
 if __name__ == "__main__":
