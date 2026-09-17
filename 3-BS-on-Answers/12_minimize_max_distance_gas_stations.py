@@ -1,156 +1,287 @@
 """
-Minimize Max Distance Between Gas Stations
-Pattern: Binary Search on Answer — Minimize the Maximum (continuous version)
+Problem: Minimize Maximum Distance Between Gas Stations
 
-See 13_median_of_two_sorted_arrays.md for the full walkthrough.
+Pattern: Binary Search on Answer — Minimize the Maximum (continuous version)
+See 12_minimize_max_distance_gas_stations.md for the full walkthrough.
+
+Given sorted coordinates of existing gas stations,
+we have to place k new gas stations such that the
+maximum distance between any two consecutive gas
+stations is minimized.
+
+Example:
+
+arr = [1, 13, 17, 23]
+k = 5
+
+Answer = 3.0
+
+
+Pattern:
+    Binary Search on Answer
 """
+
 
 import heapq
 import math
 
 
-def stations_required(arr, dist):
-    """How many NEW stations are needed so every gap's pieces are <= dist."""
+# ============================================================
+# Helper
+# ============================================================
+
+def number_of_gas_stations_required(arr, distance):
+    """
+    How many NEW gas stations are required if the maximum
+    allowed distance between consecutive stations is 'distance'?
+    """
+
     count = 0
 
     for i in range(len(arr) - 1):
+
         gap = arr[i + 1] - arr[i]
-        sections = math.floor(gap / dist)
 
-        # Exact-division correction: if gap divides evenly by dist,
-        # one fewer new station is needed than floor() alone suggests.
+        # Number of stations needed in this gap.
+        stations = math.floor(gap / distance)
+
+        # Exact divisibility correction.
         #
-        # Why not just write "gap == sections * dist"?
-        # Because dist is a float, and float math is not perfectly
-        # exact. 6 / 2 might come out as 2.9999999999998 instead of
-        # exactly 3, so a plain == check could wrongly say "not equal"
-        # even when the two numbers really should be the same.
-        # math.isclose() checks "close enough to count as equal"
-        # instead of "bit-for-bit identical", which is the safe way
-        # to compare floats.
-        if math.isclose(gap, sections * dist, rel_tol=1e-9, abs_tol=1e-9):
-            sections -= 1
+        # Example:
+        #
+        # gap = 6
+        # distance = 2
+        #
+        # floor(6 / 2) = 3
+        #
+        # But:
+        #
+        # 1 -- 3 -- 5 -- 7
+        #
+        # needs only 2 new stations.
+        #
+        # Why math.isclose() instead of just checking
+        # "gap == stations * distance"?
+        #
+        # Because 'distance' is a decimal, and computer decimals
+        # aren't always perfectly exact. A division that SHOULD
+        # come out even, like 6 / 2, can sometimes land as
+        # 2.9999999999998 instead of a clean 3.0. A plain ==
+        # check could wrongly say "not equal" even when the two
+        # numbers really should match. math.isclose() checks
+        # "close enough to count as the same" instead of demanding
+        # a bit-for-bit exact match, which is the safe way to
+        # compare two floats.
+        if math.isclose(
+            gap,
+            stations * distance,
+            rel_tol=1e-12,
+            abs_tol=1e-12
+        ):
+            stations -= 1
 
-        count += sections
+        count += stations
 
     return count
 
 
-def minimise_max_distance_brute(arr, k, step=1e-3):
-    """Step through candidate distances linearly. Slow — for small demos only."""
-    # step=1e-3 is a "default argument" -- if you call this function
-    # without giving a step (e.g. minimise_max_distance_brute(arr, k)),
-    # Python automatically uses 0.001. You only need to pass a step
-    # explicitly if you want a different one.
+# ============================================================
+# Approach 1: Brute Force
+# ============================================================
 
-    # This line computes every gap (arr[i+1] - arr[i]) and takes the
-    # biggest one, all in a single expression -- called a "generator
-    # expression". It's the same result as writing this longer version:
-    #
-    #     gaps = []
-    #     for i in range(len(arr) - 1):
-    #         gaps.append(arr[i + 1] - arr[i])
-    #     max_gap = max(gaps)
-    #
-    # just written compactly. No square brackets needed since max()
-    # can consume the values one at a time without building a full list.
-    max_gap = max(arr[i + 1] - arr[i] for i in range(len(arr) - 1))
+def minimise_max_distance_brute(arr, k):
+    """
+    Brute Force
 
-    dist = step
-    while dist <= max_gap:
-        if stations_required(arr, dist) <= k:
-            return dist
-        dist += step
+    Try possible answers linearly.
+
+    Time:
+        Extremely large for high precision.
+
+    Space:
+        O(1)
+    """
+
+    max_gap = 0
+
+    for i in range(len(arr) - 1):
+        max_gap = max(
+            max_gap,
+            arr[i + 1] - arr[i]
+        )
+
+    # Step size for how finely we scan candidate distances.
+    #
+    # NOTE: this must NOT start at 0.0 — number_of_gas_stations_required()
+    # divides by 'distance', so a distance of exactly 0 would cause a
+    # ZeroDivisionError. Starting at 'step' instead of 0.0 avoids that.
+    #
+    # We also use a slightly bigger step (1e-3) than the precision the
+    # binary search version uses (1e-6). A brute force that checks every
+    # 0.000001 units would take millions of iterations even for small
+    # gaps -- far too slow for a demo. 1e-3 keeps this fast while still
+    # showing the same idea: "try every candidate distance in order".
+    step = 1e-3
+    distance = step
+
+    while distance <= max_gap:
+
+        count = number_of_gas_stations_required(
+            arr,
+            distance
+        )
+
+        if count <= k:
+            return distance
+
+        distance += step
 
     return max_gap
 
 
+# ============================================================
+# Approach 2: Greedy + Max Heap
+# ============================================================
+
 def minimise_max_distance_heap(arr, k):
-    """Greedy: repeatedly split whichever gap currently has the worst piece."""
-    # This function uses a "heap" (from Python's heapq module), which
-    # is a data structure that always lets you grab the smallest item
-    # very quickly. We need the LARGEST gap each time, not the
-    # smallest -- Python's heapq only supports "smallest first", so
-    # the standard trick is to store every value NEGATED. The smallest
-    # negative number corresponds to the largest original number, so
-    # "smallest negative" behaves exactly like "largest positive".
-    # We just remember to flip the sign back (with a leading -) every
-    # time we read a value out of the heap.
+    """
+    Better Approach:
+    Greedy + Max Heap
+
+    At every step:
+        Pick the largest current section
+        and split it by adding one station.
+
+    Time:
+        O(N log N + K log N)
+
+    Space:
+        O(N)
+    """
 
     n = len(arr)
 
-    # how_many[i] = how many new stations we've placed inside gap i so far.
+    # Number of stations placed inside each original gap
     how_many = [0] * (n - 1)
 
-    # Build the starting heap: one entry per gap, storing
-    # (negative gap length, which gap this is).
-    # We need the index alongside the length because once we pop the
-    # "largest" entry off the heap, the length alone doesn't tell us
-    # WHICH gap it came from -- we need the index to update how_many
-    # and to look up the gap's original length again.
-    pq = [(-(arr[i + 1] - arr[i]), i) for i in range(n - 1)]
-    heapq.heapify(pq)  # arranges the list into valid heap order in place
+    # Python's heapq module only ever gives you the SMALLEST item,
+    # but we need the LARGEST gap each time. The standard trick:
+    # store every gap length as its negative. The most negative
+    # number corresponds to the largest original number (-12 is
+    # "smaller" than -4), so asking the heap for its smallest entry
+    # now correctly hands us the largest gap. We just remember to
+    # flip the sign back with a leading '-' whenever we read a value out.
+    pq = []
 
-    # Place one new station at a time, k times total.
+    # Initially every gap has one section.
+    for i in range(n - 1):
+
+        gap = arr[i + 1] - arr[i]
+
+        heapq.heappush(
+            pq,
+            (-gap, i)
+        )
+
+    # Place K stations
     for _ in range(k):
-        # heappop always returns the smallest item in the heap.
-        # Because we stored negated lengths, "smallest negative" is
-        # really "largest gap" -- so this line pulls out whichever
-        # gap currently has the worst (biggest) piece.
-        neg_len, i = heapq.heappop(pq)  # unpack the (length, index) pair
 
-        how_many[i] += 1  # one more station now lives inside gap i
+        # heappop always returns the smallest item -- since we stored
+        # negated lengths, "smallest negative" means "largest gap",
+        # so this pulls out whichever gap currently has the worst piece.
+        # The index travels alongside the length so we still know
+        # WHICH gap this came from, since the length alone doesn't say.
+        negative_length, index = heapq.heappop(pq)
 
-        gap = arr[i + 1] - arr[i]  # the ORIGINAL length of this gap
+        # Add one station to this original gap
+        how_many[index] += 1
 
-        # After how_many[i] stations, gap i is split into
-        # (how_many[i] + 1) equal pieces -- this is its new worst piece.
-        new_len = gap / (how_many[i] + 1)
+        gap = arr[index + 1] - arr[index]
 
-        # Push the updated (still negated) length back onto the heap
-        # so it competes fairly against the other gaps next time.
-        heapq.heappush(pq, (-new_len, i))
+        # After x stations:
+        #
+        # number of sections = x + 1
+        #
+        # current largest section =
+        # original gap / (x + 1)
 
-    # After placing all k stations, the heap's smallest (negated) entry
-    # tells us the largest piece remaining anywhere -- that's our answer.
-    # pq[0] peeks at the top of the heap without removing it.
-    return -pq[0][0]
+        new_length = gap / (
+            how_many[index] + 1
+        )
+
+        heapq.heappush(
+            pq,
+            (-new_length, index)
+        )
+
+    # Largest current section is sitting at the top of the heap.
+    # pq[0] peeks without removing it; negate to undo the earlier flip.
+    negative_length, _ = pq[0]
+
+    return -negative_length
 
 
-def minimise_max_distance(arr, k, epsilon=1e-6):
-    """Binary search on the answer (a continuous distance)."""
+# ============================================================
+# Approach 3: Binary Search on Answer
+# ============================================================
+
+def minimise_max_distance(arr, k):
+    """
+    Optimal Approach:
+    Binary Search on Answer
+
+    Time:
+        O(N * log(max_gap / epsilon))
+
+    Space:
+        O(1)
+    """
+
     low = 0.0
-    # Same "generator expression" pattern as in the brute force function
-    # above: computes every gap and keeps the biggest one, without
-    # building a separate list first.
-    high = max(arr[i + 1] - arr[i] for i in range(len(arr) - 1))
+
+    # Answer cannot exceed the largest existing gap.
+    high = 0.0
+
+    for i in range(len(arr) - 1):
+
+        gap = arr[i + 1] - arr[i]
+
+        high = max(high, gap)
+
+    epsilon = 1e-6
 
     while high - low > epsilon:
-        mid = (low + high) / 2
-        if stations_required(arr, mid) > k:
-            low = mid  # too many stations needed, dist too small
+
+        mid = (low + high) / 2.0
+
+        count = number_of_gas_stations_required(
+            arr,
+            mid
+        )
+
+        if count > k:
+
+            # Too many stations required.
+            # Candidate distance is too small.
+            low = mid
+
         else:
-            high = mid  # feasible, keep looking for something smaller
+
+            # Possible answer.
+            # Try a smaller distance.
+            high = mid
 
     return high
 
 
-if __name__ == "__main__":
-    tests = [
-        (([1, 13, 17, 23], 5), 3.0),
-        (([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 9), 0.5),
-        (([1, 5], 1), 2.0),
-        (([1, 10], 4), 1.8),
-    ]
+# ============================================================
+# Example
+# ============================================================
 
-    for (arr, k), expected in tests:
-        heap_result = minimise_max_distance_heap(list(arr), k)
-        bs_result = minimise_max_distance(arr, k)
-        ok = math.isclose(heap_result, expected, abs_tol=1e-6) and math.isclose(
-            bs_result, expected, abs_tol=1e-6
-        )
-        status = "PASS" if ok else "FAIL"
-        print(
-            f"{status}: arr={arr}, k={k} -> heap={heap_result:.6f}, "
-            f"bs={bs_result:.6f} (expected {expected})"
-        )
+if __name__ == "__main__":
+    arr = [1, 13, 17, 23]
+    k = 5
+
+    print("Brute:", minimise_max_distance_brute(arr, k))
+    print("Heap :", minimise_max_distance_heap(arr, k))
+    print("BS   :", minimise_max_distance(arr, k))
